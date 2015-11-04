@@ -30,6 +30,7 @@ void QtJaCommanderThread::performTransfer(QList<ja_host_request_header_t *>::ite
             qDebug()<<"output "<<serial->write((const char *)transBuf, i);
         //wait writeData completed
         qDebug()<<"beforeWriteCmd";
+        serial->flush();
         while (serial->bytesToWrite()) {
             //msleep(2);
         }
