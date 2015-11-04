@@ -76,12 +76,18 @@ direct = req->cmd_header.cmd & JA_READ;
 
 
         }
+        for(count=0; count < i; count ++){
+            printf("%x,",receiveBuf[count]);
 
+        }
+        printf("\n");
         dest = req->receive_buf;
         buf = (uint8_t *)(&receiveBuf + sizeof(ja_host_command_header_t));
         for (i=0; i < req->receive_count; i++) {
             *(dest + i) = *(buf + i);
         }
+        float *temp = (float *)req->receive_buf;
+        printf("size of float %x, %f\n",sizeof(float),*temp);
 
         //TODO send ack;
 

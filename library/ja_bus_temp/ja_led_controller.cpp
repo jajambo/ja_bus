@@ -774,7 +774,8 @@ void  JALedControllerDevice::processClassCmd(void)
 
 void	JALedControllerDevice::run(void)
 {
-  currentValue = (.0264 * analogRead(currentPin) - 13.51);
+  //currentValue = (.0264 * analogRead(currentPin) - 13.51);
+  currentValue = 0.5;
 }
 
 JALedControllerDevice::JALedControllerDevice(HardwareSerial *serial, uint8_t id, uint8_t switchPin , uint8_t analogPin)
