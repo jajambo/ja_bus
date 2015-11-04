@@ -1,3 +1,5 @@
+#include <TimerFour.h>
+
 #include <ja_bus_protocol.h>
 #include <ja_device.h>
 #include <EEPROM.h>
@@ -14,7 +16,7 @@ void setup()
 
 char i;
 char *dest,t;
-slave_info.slave_class = 0x02;
+slave_info.slave_class = 0x05;
 slave_info.slave_id = 0x01;
 Serial.begin(9600);
 Serial.write("before clear\n");

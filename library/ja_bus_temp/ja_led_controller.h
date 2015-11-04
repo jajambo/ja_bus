@@ -76,7 +76,7 @@ class JALedControllerDevice
 
 
   public:
-      JALedControllerDevice(HardwareSerial *, uint8_t, uint8_t);
+      JALedControllerDevice(HardwareSerial *, uint8_t, uint8_t, uint8_t);
 
     virtual bool  checkHostMatched(void);
     virtual void  ISRHooking(void);

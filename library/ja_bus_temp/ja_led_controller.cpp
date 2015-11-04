@@ -2,7 +2,8 @@
 #include <ja_led_controller.h>
 #include <Arduino.h>
 #include <stddef.h>
-
+#define SKIP_SYNC 1
+#define JA_DEBUG 1
 
 
 void JALedControllerDevice::syncFromEeprom(void) {
@@ -104,6 +105,12 @@ void JALedControllerDevice::updateSn(char *dest, char *sn) {
 
 bool JALedControllerDevice::checkHostMatched() {
   int i = sizeof(host_sn);
+  //jdebug {
+#if SKIP_SYNC
+  device_status |= DEV_HOST_MATCHED;
+					return true;
+#endif
+  //jdebug }
   if(memcmp(host_sn, dev_eeprom.host_serial_id, i)) {
 					device_status |= DEV_HOST_MATCHED;
 					return true;
@@ -209,7 +216,9 @@ void JALedControllerDevice::ISRHooking() {
         Serial.write("default\n");
 #endif
         if(!rest_count){
-          byte_ascii(cmd_buf->cmd_header.cmd,t);
+#if	JA_DEBUG		
+		byte_ascii(cmd_buf->cmd_header.cmd,t);
+#endif
           if (cmd_buf->cmd_header.cmd == CMD_RELEASE_BUS){
             dev_serial->inc_sync_jitter();
 #if	JA_DEBUG		
@@ -311,7 +320,11 @@ void JALedControllerDevice::processJADevCmd(void) {
 }
 
 void JALedControllerDevice::tryProcessCmd(void) {
+#if SKIP_SYNC
+	if(1) {
+#else
   if(device_status & DEV_HOST_MATCHED) {
+#endif
       device_status &= ~ DEV_RECEIVE_CMD;
       switch (rx_cmd_buf.cmd_header.cmd) {
 
@@ -393,8 +406,13 @@ void JALedControllerDevice::dispatchCmd(void) {
       device_status &= ~ DEV_RECEIVE_RELEASE_BUS;
       tryRequest();
     }
+#if SKIP_SYNC
     updateSn((char*)host_sn, (char *)&rx_cmd_buf.data);
+#endif
   } else if (device_status & DEV_RECEIVE_CMD){
+	  	  #if JA_DEBUG
+	Serial.write("tryProcessCmd()\n");
+#endif
     device_status &= ~ DEV_RECEIVE_CMD;
     tryProcessCmd();
   }
@@ -442,11 +460,16 @@ void JALedControllerDevice::rankDelay(unsigned int i){
 	delay(base);
 }
 
-void JALedControllerDevice::sendCmd(size_t i, unsigned int flag){
+void JALedControllerDevice::sendCmd(size_t bytes, unsigned int flag){
 	size_t size = sizeof(ja_host_command_header_t);
 	char *src = (char *)&tx_cmd_buf;
+	#if JA_DEBUG
+	char t,b;
+	Serial.write("sendCmd\n");
+	byte_ascii(bytes,t);
+	#endif
 	//hard core CRC size;
-	size += (i + 2);
+	size += (bytes + 2);
 	beforeSendCmd();	
 	dev_serial->write(src,size);
 	afterSendCmd();
@@ -706,10 +729,15 @@ void  JALedControllerDevice::processSwitchReg(void)
 void  JALedControllerDevice::getCurrentReg(void)
 {
   uint8_t bytes, direct, *buf, i;
+  #if JA_DEBUG
   Serial.write("getCurrentReg\n");
+  #endif
   direct = rx_cmd_buf.cmd_header.cmd & JA_READ;
   bytes = 1 <<(rx_cmd_buf.cmd_header.cmd & JA_REG_BYTES);
-  if (bytes == sizeof(currentValue) & direct) {
+  if (bytes == sizeof(currentValue) && direct) {
+	  #if JA_DEBUG
+	  Serial.write("send register\n");
+	  #endif
       tx_cmd_buf.cmd_header.start_flag = DEV_START_FLAG;
       tx_cmd_buf.cmd_header.cmd = rx_cmd_buf.cmd_header.cmd;
       tx_cmd_buf.cmd_header.reg_index = rx_cmd_buf.cmd_header.reg_index;
@@ -727,7 +755,9 @@ void  JALedControllerDevice::getCurrentReg(void)
 void  JALedControllerDevice::processClassCmd(void)
 {
   uint8_t cmd;
-  Serial.write("processClassCmd\n");
+  #if JA_DEBUG
+	Serial.write("processClassCmd()\n");
+#endif
   switch (rx_cmd_buf.cmd_header.reg_index) {
     case offsetof(ja_led_controller_register_t, currentValue):
       getCurrentReg();
@@ -747,9 +777,10 @@ void	JALedControllerDevice::run(void)
   currentValue = (.0264 * analogRead(currentPin) - 13.51);
 }
 
-JALedControllerDevice::JALedControllerDevice(HardwareSerial *serial, uint8_t switchPin , uint8_t analogPin)
+JALedControllerDevice::JALedControllerDevice(HardwareSerial *serial, uint8_t id, uint8_t switchPin , uint8_t analogPin)
 {
   slave_info.slave_class = LIGHT_CONTROLLER;
+  slave_info.slave_id = id;
   currentPin = analogPin;
   powerPin = switchPin;
   pinMode(switchPin,OUTPUT);
@@ -762,8 +793,11 @@ JALedControllerDevice::JALedControllerDevice(HardwareSerial *serial, uint8_t swi
 	host_sn_empty = false;
 	dev_id_empty = false;
 	//temp solution need remove after
-	
+#if SKIP_SYNC
+  device_state = DEV_READY;
+#else	
   device_state = DEV_WAIT_FOR_SYNC;
+#endif
 	device_status = 0;
 	syncFromEeprom();
 	checkHostMatched();

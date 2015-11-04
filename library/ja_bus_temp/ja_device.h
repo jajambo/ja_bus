@@ -9,10 +9,11 @@
 
 
 #define byte_ascii(c,b) \
-  b = (c/16 <=9)? c/16+0x30:c/16+0x40-9; \
+  b = (c/16 <=9)? c/16+0x30:c/16+0x60-9; \
   Serial.write(b);\
-  b = (c%16 <=9)? c%16+0x30:c%16+0x40-9; \
-  Serial.write(b)
+  b = (c%16 <=9)? c%16+0x30:c%16+0x60-9; \
+  Serial.write(b);\
+  Serial.write(" ")
 
 #define JASERIAL_PORT Serial1
 #define BAUD_RATE 9600
