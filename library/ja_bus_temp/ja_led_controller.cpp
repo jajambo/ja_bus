@@ -2,7 +2,8 @@
 #include <ja_led_controller.h>
 #include <Arduino.h>
 #include <stddef.h>
-
+#define SKIP_SYNC 1
+#define JA_DEBUG 1
 
 
 void JALedControllerDevice::syncFromEeprom(void) {
@@ -104,6 +105,12 @@ void JALedControllerDevice::updateSn(char *dest, char *sn) {
 
 bool JALedControllerDevice::checkHostMatched() {
   int i = sizeof(host_sn);
+  //jdebug {
+#if SKIP_SYNC
+  device_status |= DEV_HOST_MATCHED;
+					return true;
+#endif
+  //jdebug }
   if(memcmp(host_sn, dev_eeprom.host_serial_id, i)) {
 					device_status |= DEV_HOST_MATCHED;
 					return true;
@@ -114,6 +121,7 @@ bool JALedControllerDevice::checkHostMatched() {
 }
 
 void JALedControllerDevice::ISRHooking() {
+	
   	if (dev_serial->check_no_error()) {
     // No Parity error, read byte and store it in the buffer if there is
     // room
@@ -209,7 +217,9 @@ void JALedControllerDevice::ISRHooking() {
         Serial.write("default\n");
 #endif
         if(!rest_count){
-          byte_ascii(cmd_buf->cmd_header.cmd,t);
+#if	JA_DEBUG		
+		byte_ascii(cmd_buf->cmd_header.cmd,t);
+#endif
           if (cmd_buf->cmd_header.cmd == CMD_RELEASE_BUS){
             dev_serial->inc_sync_jitter();
 #if	JA_DEBUG		
@@ -311,7 +321,11 @@ void JALedControllerDevice::processJADevCmd(void) {
 }
 
 void JALedControllerDevice::tryProcessCmd(void) {
+#if SKIP_SYNC
+	if(1) {
+#else
   if(device_status & DEV_HOST_MATCHED) {
+#endif
       device_status &= ~ DEV_RECEIVE_CMD;
       switch (rx_cmd_buf.cmd_header.cmd) {
 
@@ -387,14 +401,20 @@ void JALedControllerDevice::functionStop(void) {
 }
 
 void JALedControllerDevice::dispatchCmd(void) {
+
   if (device_status & DEV_RECEIVE_RELEASE_BUS) {
     if(device_status & DEV_HOST_MATCHED) {
       //device_state = DEV_TRY_REQUEST;
       device_status &= ~ DEV_RECEIVE_RELEASE_BUS;
       tryRequest();
     }
+#if SKIP_SYNC
     updateSn((char*)host_sn, (char *)&rx_cmd_buf.data);
+#endif
   } else if (device_status & DEV_RECEIVE_CMD){
+	  	  #if JA_DEBUG
+	Serial.write("tryProcessCmd()\n");
+#endif
     device_status &= ~ DEV_RECEIVE_CMD;
     tryProcessCmd();
   }
@@ -407,20 +427,20 @@ void JALedControllerDevice::waitForSync(void) {
 	if(device_status & DEV_RECEIVE_RELEASE_BUS) {
     Serial.write("recevied release bus\n");
 		if (!(device_status & DEV_HOST_MATCHED)) {
-      if (dev_id_empty || host_sn_empty || dev_sn_empty) {
-        device_state = DEV_TRY_REQUEST_ID;
-      } else {
-        //set disable sn
-        dev_eeprom.sn_program_disable = 0xAA;
-        eeprom_write_byte((uint8_t*)(offsetof(ja_dev_eeprom_t,sn_program_disable)), 0);
-        eeprom_write_byte((uint8_t*)(offsetof(ja_dev_eeprom_t,sn_program_disable)), dev_eeprom.sn_program_disable);
-        device_state = DEV_READY;
-      }
+			if (dev_id_empty || host_sn_empty || dev_sn_empty) {
+				device_state = DEV_TRY_REQUEST_ID;
+			} else {
+			//set disable sn
+			dev_eeprom.sn_program_disable = 0xAA;
+			eeprom_write_byte((uint8_t*)(offsetof(ja_dev_eeprom_t,sn_program_disable)), 0);
+			eeprom_write_byte((uint8_t*)(offsetof(ja_dev_eeprom_t,sn_program_disable)), dev_eeprom.sn_program_disable);
+			device_state = DEV_READY;
+			}
 		} else {
 			device_state = DEV_READY;
 		}
 		updateSn((char*)host_sn, (char *)&rx_cmd_buf.data);
-    device_status &= ~(DEV_RECEIVE_RELEASE_BUS | DEV_INTERRUPT_OCCUR);
+		device_status &= ~(DEV_RECEIVE_RELEASE_BUS | DEV_INTERRUPT_OCCUR);
 	}	
 }
 
@@ -727,7 +747,9 @@ void  JALedControllerDevice::getCurrentReg(void)
 void  JALedControllerDevice::processClassCmd(void)
 {
   uint8_t cmd;
-  Serial.write("processClassCmd\n");
+  #if JA_DEBUG
+	Serial.write("processClassCmd()\n");
+#endif
   switch (rx_cmd_buf.cmd_header.reg_index) {
     case offsetof(ja_led_controller_register_t, currentValue):
       getCurrentReg();
@@ -744,12 +766,16 @@ void  JALedControllerDevice::processClassCmd(void)
 
 void	JALedControllerDevice::run(void)
 {
+#if JA_DEBUG
+	//Serial.write("run()\n");
+#endif
   currentValue = (.0264 * analogRead(currentPin) - 13.51);
 }
 
-JALedControllerDevice::JALedControllerDevice(HardwareSerial *serial, uint8_t switchPin , uint8_t analogPin)
+JALedControllerDevice::JALedControllerDevice(HardwareSerial *serial, uint8_t id, uint8_t switchPin , uint8_t analogPin)
 {
   slave_info.slave_class = LIGHT_CONTROLLER;
+  slave_info.slave_id = id;
   currentPin = analogPin;
   powerPin = switchPin;
   pinMode(switchPin,OUTPUT);
@@ -763,7 +789,7 @@ JALedControllerDevice::JALedControllerDevice(HardwareSerial *serial, uint8_t swi
 	dev_id_empty = false;
 	//temp solution need remove after
 	
-  device_state = DEV_WAIT_FOR_SYNC;
+  device_state = DEV_READY;
 	device_status = 0;
 	syncFromEeprom();
 	checkHostMatched();
