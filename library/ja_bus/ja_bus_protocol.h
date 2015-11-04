@@ -7,6 +7,7 @@
 #define _JA_BUS_PROTOCOL_H
 //host send out data field
 //
+#include <stdint.h>
 #define HOST_START
 #define	HOST_LISITENING
 
@@ -51,7 +52,7 @@ typedef struct _ja_slave_info {
 }ja_slave_info_t;
 
 typedef struct _ja_host_command_header {
-	unsigned int	start_flag;
+        uint16_t	start_flag;
 	unsigned char	cmd;
 	unsigned char	reg_index;
 	ja_slave_info_t	slave_info;
@@ -77,7 +78,7 @@ typedef struct _ja_dev_register {
 typedef struct _ja_device_command {
 	ja_host_command_header_t cmd_header;
 	unsigned char	data[16];
-	unsigned int	crc;
+        uint16_t	crc;
 }ja_device_command_t;
 
 

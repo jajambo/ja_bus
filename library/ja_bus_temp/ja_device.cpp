@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <TimerFour.h>
 
-#define	JA_DEBUG	1
+//#define	JA_DEBUG	1
 
 
 void JADevice::syncFromEeprom(void) {
@@ -211,7 +211,9 @@ void JADevice::ISRHooking() {
         Serial.write("default\n");
 #endif
         if(!rest_count){
+#if JA_DEBUG
           byte_ascii(cmd_buf->cmd_header.cmd,t);
+#endif
           if (cmd_buf->cmd_header.cmd == CMD_RELEASE_BUS){
             dev_serial->inc_sync_jitter();
 #if	JA_DEBUG		
