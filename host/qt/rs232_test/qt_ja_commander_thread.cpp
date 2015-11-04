@@ -1,6 +1,6 @@
 #include "qt_ja_commander_thread.h"
 #include <QDebug>
-
+#include <QtSerialPort/QSerialPort>
 
 
 void QtJaCommanderThread::performTransfer(QList<ja_host_request_header_t *>::iterator req)
@@ -12,24 +12,34 @@ void QtJaCommanderThread::performTransfer(QList<ja_host_request_header_t *>::ite
     uint16_t crc;
     uint i = 0;
     uint16_t  count = 0;
-    qDebug()<<"performTransfer";
+
+    qDebug()<<"performTransfer" << sizeof(ja_host_command_header_t);
     buf = (uint8_t *) (&(*req)->cmd_header);
     for(i = 0; i < sizeof(ja_host_command_header_t); i++) {
         transBuf[i] = *(buf + i);
     }
+
     if (direct) {
+
         i += sizeof(crc);
-        writeData((const char *)&transBuf, i);
+        qDebug()<<"performRead"<<i;
+        for(int tindex=0; tindex < i; tindex++)
+            printf("%x ", transBuf[tindex]);
+        printf("\n");
+        //for(count = 0; count < i; count ++)
+            qDebug()<<"output "<<serial->write((const char *)transBuf, i);
         //wait writeData completed
-        while (bytesToWrite()) {
-            msleep(2);
+        qDebug()<<"beforeWriteCmd";
+        while (serial->bytesToWrite()) {
+            //msleep(2);
         }
+        qDebug()<<"afterWriteCmd";
         //get response
         count = (*req)->receive_count + sizeof(crc) + sizeof(ja_host_command_header_t);
         i = 0;
         while (count)  {
-            if(bytesAvailable()) {
-                i= readData((char *)((&receiveBuf) + i), (qint64)count);
+            if(serial->bytesAvailable()) {
+                i= serial->read((char *)((&receiveBuf) + i), (qint64)count);
                 count -= i ;
             }
         }
@@ -43,16 +53,18 @@ void QtJaCommanderThread::performTransfer(QList<ja_host_request_header_t *>::ite
 
 
     } else {
-
+        qDebug()<<"performWrite";
         while (count < (*req)->send_count) {
             transBuf[i] = (*req)->send_buf[count];
             count ++;
         }
         i += sizeof(crc);
-        writeData((const char *) &transBuf, i);
+        QByteArray a;
+        a.append((char)0x22);
+        serial->write(a);
         //wait writeData completed
-        while (bytesToWrite()) {
-            msleep(2);
+        while (serial->bytesToWrite()) {
+            //msleep(2);
         }
 
         //TODO wait ack
@@ -64,17 +76,24 @@ void QtJaCommanderThread::performTransfer(QList<ja_host_request_header_t *>::ite
 
 }
 
-void QtJaCommanderThread::run()
+void QtJaCommanderThread::timerEvent(QTimerEvent *)
 {
     QList<ja_host_request_header_t *>::iterator i;
+    qDebug() << "onTimerEvent(): ";
 
-    while(1){
-        qDebug() << "Thread::stop called from main thread: "<<currentThreadId();
+   // while(1){
+    //    qDebug() << "Thread::stop called from main thread: "<<currentThreadId();
         //assume asynchrony request first priority
 
         asynchronyLock.lock();
+        if (!asynchronyList.isEmpty())
+            qDebug()<<"asynchronyList is not empty";
+        else
+            qDebug()<<"asynchronyList is empty";
         while(!asynchronyList.isEmpty()) {
+
             i = asynchronyList.begin();
+            qDebug() << "asynchronyList(): "<<&i;
             releaseBusLock.lock();
             performTransfer(i);
             //do asynchrony
@@ -86,24 +105,31 @@ void QtJaCommanderThread::run()
         asynchronyLock.unlock();
 
         periodicLock.lock();
-        i = periodicList.begin();
-        while (i != periodicList.end()) {
-            releaseBusLock.lock();
-            //do periodic
-            //1. check count = 0, means need perform a transfer.
-            if (((*i)->status) && JA_REQUEST_TRIGGER){
-                performTransfer(i);
-                (*i)->status &= ~JA_REQUEST_TRIGGER;
+        if (!periodicList.isEmpty()) {
+            qDebug()<<"periodicList is not empty";
+            i = periodicList.begin();
+            while (i != periodicList.end()) {
+                qDebug() << "periodicList(): "<<&i;
+                releaseBusLock.lock();
+                //do periodic
+                //1. check count = 0, means need perform a transfer.
+                if (((*i)->status) && JA_REQUEST_TRIGGER){
+                    performTransfer(i);
+                    (*i)->status &= ~JA_REQUEST_TRIGGER;
+                }
+                ++i;
+                releaseBusLock.unlock();
             }
-            ++i;
-            releaseBusLock.unlock();
+        } else {
+            qDebug()<<"periodicList is empty";
         }
         periodicLock.unlock();
-    }
+    //}
 }
 
 void QtJaCommanderThread::addAsynchony(ja_host_request_header_t *request)
 {
+    qDebug() << "addAsynchony(): ";
     asynchronyLock.lock();
     asynchronyList.append(request);
     asynchronyLock.unlock();
@@ -111,22 +137,33 @@ void QtJaCommanderThread::addAsynchony(ja_host_request_header_t *request)
 
 void QtJaCommanderThread::addPeriodic(ja_host_request_header_t *request)
 {
+    qDebug() << "addPeriodic(): ";
     periodicLock.lock();
     periodicList.append(request);
+    if(periodicList.isEmpty())
+        qDebug()<<"periodicList is empty";
+    else
+        qDebug()<<"periodicList is not empty";
     periodicLock.unlock();
 }
 
 QtJaCommanderThread::QtJaCommanderThread()
 {
-    setPortName("COM4");
-    setBaudRate(9600);
-    if(open(QIODevice::ReadWrite)) {
+    serial = new QSerialPort(this);
+    serial->setPortName("COM4");
+    serial->setBaudRate(9600);
+    serial->setDataBits(QSerialPort::Data8);
+    serial->setParity(QSerialPort::NoParity);
+    serial->setFlowControl(QSerialPort::NoFlowControl);
+
+    if(!serial->open(QIODevice::ReadWrite)) {
         printf("open serial port fail\n");
     }
+    currentTimerId = startTimer(1000);
 }
 
 
 QtJaCommanderThread::~QtJaCommanderThread()
 {
-    close();
+    serial->close();
 }

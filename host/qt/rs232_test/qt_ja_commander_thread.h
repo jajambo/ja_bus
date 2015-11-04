@@ -1,23 +1,27 @@
 #ifndef QTJACOMMANDERTHREAD_H
 #define QTJACOMMANDERTHREAD_H
 #include <QObject>
-#include <QSerialPort>
+#include <QtSerialPort/QSerialPort>
 #include <QThread>
 #include <ja_bus_protocol.h>
 #include <ja_host.h>
 #include <QMutex>
 
 
-class QtJaCommanderThread: public QThread, QSerialPort
+class QtJaCommanderThread : public QObject
 {
+
 public:
     QtJaCommanderThread(void);
     ~QtJaCommanderThread(void);
     void addPeriodic(ja_host_request_header_t *);
     void addAsynchony(ja_host_request_header_t *);
+    QSerialPort *serial;
+
 
 private:
-    void run();
+
+    //void run();
     void performTransfer(QList<ja_host_request_header_t *>::iterator req);
     //QSerialPort serial;
     QList<ja_host_request_header_t *> periodicList;
@@ -29,7 +33,8 @@ private:
 
 protected:
 
-
+    void timerEvent(QTimerEvent *);
+    int currentTimerId;
 };
 
 
