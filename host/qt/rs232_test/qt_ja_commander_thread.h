@@ -6,19 +6,23 @@
 #include <ja_bus_protocol.h>
 #include <ja_host.h>
 #include <QMutex>
+#include <QCoreApplication>
 
 
-class QtJaCommanderThread: public QThread, QSerialPort
+class QtJaCommanderThread: public QObject
 {
+    Q_OBJECT
 public:
     QtJaCommanderThread(void);
+    QtJaCommanderThread(QObject *);
     ~QtJaCommanderThread(void);
     void addPeriodic(ja_host_request_header_t *);
     void addAsynchony(ja_host_request_header_t *);
 
-private:
+public slots:
     void run();
-    void performTransfer(QList<ja_host_request_header_t *>::iterator req);
+protected:
+    //void performTransfer(QList<ja_host_request_header_t *>::iterator req);
     //QSerialPort serial;
     QList<ja_host_request_header_t *> periodicList;
     QList<ja_host_request_header_t *> asynchronyList;
@@ -27,9 +31,13 @@ private:
     QMutex serialLock;
     QMutex releaseBusLock;
 
-protected:
+
+    QSerialPort *serial;
 
 
+private slots:
+    void performTransfer(ja_host_request_header_t *);
+    friend class JaThread;
 };
 
 

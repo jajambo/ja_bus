@@ -5,8 +5,9 @@
 #include <qt_ja_device.h>
 #include <ja_host.h>
 #include <QList>
-class QtJaLedControl : public QtJaDevice
+class QtJaLedControl : public QObject
 {
+    Q_OBJECT
 private:
     QtJaCommanderThread * cmdThread;
     float currentValue;

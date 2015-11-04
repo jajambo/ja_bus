@@ -11,7 +11,8 @@ TEMPLATE = app
 SOURCES += main.cpp \
     qt_ja_commander_thread.cpp \
     qt_ja_led_control.cpp \
-    qt_ja_device.cpp
+    qt_ja_device.cpp \
+    jathread.cpp
 
 HEADERS += \
     serialread.h \
@@ -20,4 +21,5 @@ HEADERS += \
     qt_ja_request.h \
     qt_ja_commander_thread.h \
     ja_host.h
+HEADERS +=    jathread.h
 

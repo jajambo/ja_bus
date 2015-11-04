@@ -5,6 +5,7 @@
 #include <ja_host.h>
 class QtJaRequest:public QObject
 {
+    Q_OBJECT
 private:
     ja_host_request_header_t requestHeader;
 };

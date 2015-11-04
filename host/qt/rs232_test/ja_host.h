@@ -2,12 +2,14 @@
 #define JA_HOST
 #include <stdint-gcc.h>
 #include <ja_bus_protocol.h>
+
 typedef void (*jaRequestCallBack)(void *);
 typedef struct _ja_host_request_header {
     ja_host_command_header_t cmd_header;
     uint64_t periodic;
     uint64_t count;
     jaRequestCallBack call_back;
+
     uint16_t status;
     uint16_t receive_count;
     uint16_t send_count;

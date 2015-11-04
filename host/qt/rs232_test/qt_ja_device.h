@@ -6,6 +6,7 @@
 
 class QtJaDevice:public QObject
 {
+    Q_OBJECT
 private:
     ja_host_request_header_t reportHeader;
     QList<ja_host_request_header_t> headerList;
