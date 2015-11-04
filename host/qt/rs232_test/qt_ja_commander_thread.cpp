@@ -111,8 +111,13 @@ void QtJaCommanderThread::addAsynchony(ja_host_request_header_t *request)
 
 void QtJaCommanderThread::addPeriodic(ja_host_request_header_t *request)
 {
+    qDebug() << "addPeriodic(): ";
     periodicLock.lock();
     periodicList.append(request);
+    if(periodicList.isEmpty())
+        qDebug()<<"periodicList is empty";
+    else
+        qDebug()<<"periodicList is not empty";
     periodicLock.unlock();
 }
 
