@@ -9,6 +9,7 @@
 //
 #define HOST_START
 #define	HOST_LISITENING
+#define JA_DEBUG 	1
 
 //device class slave_info_t slave_class;
 #define WATER_METER		2

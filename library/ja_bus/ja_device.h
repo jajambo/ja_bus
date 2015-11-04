@@ -90,7 +90,7 @@ class JADevice
 		bool	host_sn_empty;
 		bool	dev_id_empty;
 
-	private:
+
     void  syncFromEeprom(void);
     void  updateSn(char *, char *);
 		void	syncJitter(void);
@@ -111,7 +111,7 @@ class JADevice
     void  tryClassProcessCmd(void);
     void  classProcess(void);
     void  waitForAck(unsigned int timeout);
-    void  processClassCmd(void);
+    virtual void  processClassCmd(void);
     void  processJADevCmd(void);
     
 

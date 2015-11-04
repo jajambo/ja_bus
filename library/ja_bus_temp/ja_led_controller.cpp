@@ -1,3 +1,4 @@
+#include <ja_bus_protocol.h>
 #include <ja_led_controller.h>
 #include <Arduino.h>
 #include <stddef.h>
@@ -117,10 +118,10 @@ void JALedControllerDevice::ISRHooking() {
     // No Parity error, read byte and store it in the buffer if there is
     // room
     unsigned char c = dev_serial->get_from_buf();
+	unsigned char t;
     ja_slave_info_t *info;
     ja_device_command_t  *cmd_buf = (ja_device_command_t *)temp_buf;
 #if	JA_DEBUG		
-    unsigned char t;
     byte_ascii(c,t);
     Serial.write(" ");
 #endif
@@ -755,7 +756,24 @@ JALedControllerDevice::JALedControllerDevice(HardwareSerial *serial, uint8_t swi
   ledSwitch = 0;
   currentValue = 0;
 	//temp solution need remove after
-  dev_serial = serial;
-  dev_serial->begin(9600);
 
+    dev_serial = serial;
+	dev_sn_empty = false;
+	host_sn_empty = false;
+	dev_id_empty = false;
+	//temp solution need remove after
+	
+  device_state = DEV_WAIT_FOR_SYNC;
+	device_status = 0;
+	syncFromEeprom();
+	checkHostMatched();
+  temp_count = 0;
+  rest_count = 0;
+  reportId = 0;
+  dev_serial->begin(BAUD_RATE);
+	syncJitter();
+
+	
+	
+	
 }
