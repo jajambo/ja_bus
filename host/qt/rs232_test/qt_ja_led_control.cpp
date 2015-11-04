@@ -1,5 +1,6 @@
 #include "qt_ja_led_control.h"
 #include <ja_led_common.h>
+#include <ja_bus_protocol.h>
 #include <math.h>
 
 void QtJaLedControl::timerEvent(QTimerEvent * tEvent)
@@ -11,7 +12,7 @@ void QtJaLedControl::timerEvent(QTimerEvent * tEvent)
 QtJaLedControl::QtJaLedControl(QtJaCommanderThread * thread)
 {
     cmdThread = thread;
-    reqCurrent.cmd_header.cmd = int(pow(sizeof(currentValue),2)) | JA_READ;
+    reqCurrent.cmd_header.cmd = CMD_READ_4_BYTE;
     reqCurrent.cmd_header.slave_info.slave_class = LIGHT_CONTROLLER;
     reqCurrent.cmd_header.slave_info.slave_id = 0x01;
     reqCurrent.cmd_header.reg_index = offsetof(ja_led_controller_register_t, currentValue);

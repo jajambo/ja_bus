@@ -12,15 +12,16 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    QtJaCommanderThread *jaCmd = new QtJaCommanderThread((QObject*)&a);
-    JaThread *t;
-    QtJaLedControl *led;
-    t = new JaThread(jaCmd);
+    QtJaCommanderThread *jaCmd = new QtJaCommanderThread();
 
-    QObject::connect(t, SIGNAL(tiggerTransfer(ja_host_request_header_t*)), jaCmd, SLOT(performTransfer(ja_host_request_header_t*)));
+    QtJaLedControl *led;
+
+
+    QObject::connect(jaCmd, SIGNAL(requestTransfer(char *, int)), jaCmd, SLOT(sendData(char*,int)));
+    QObject::connect(jaCmd, SIGNAL(requestData(char *, int)), jaCmd, SLOT(readData(char*,int)));
     led = new QtJaLedControl(jaCmd);
     //QTimer::singleShot(0, jaCmd, SLOT(run()));
-    t->start();
+    jaCmd->start();
     return a.exec();
 }
 
